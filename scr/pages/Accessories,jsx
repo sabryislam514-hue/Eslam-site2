@@ -1,0 +1,301 @@
+import { useMemo, useState } from 'react'
+import { Search, ShoppingBag } from 'lucide-react'
+import { useSite } from '../context/SiteContext.jsx'
+import ProductCard from '../features/accessories/ProductCard.jsx'
+import CartDrawer from '../features/accessories/CartDrawer.jsx'
+import SectionHeading from '../components/SectionHeading.jsx'
+import EmptyState from '../components/EmptyState.jsx'
+import Reveal from '../components/Reveal.jsx'
+import ImageWithFallback from '../components/ImageWithFallback.jsx'
+import { useCart } from '../context/CartContext.jsx'
+import useReveal from '../hooks/useReveal.js'
+
+export default function Accessories() {
+  const { settings, accessoriesCategories, accessoriesProducts } = useSite()
+  const { setAccessoriesCartOpen, accessoriesCount } = useCart()
+
+  const [q, setQ] = useState('')
+  const [cat, setCat] = useState('الكل')
+  const [sort, setSort] = useState('featured')
+  const [onlyAvailable, setOnlyAvailable] = useState(false)
+
+  useReveal()
+
+  const cats = useMemo(
+    () => ['الكل', ...accessoriesCategories.map((c) => c.name)],
+    [accessoriesCategories]
+  )
+
+  const filtered = useMemo(() => {
+    let list = [...accessoriesProducts]
+
+    // Category filter
+    if (cat !== 'الكل') {
+      list = list.filter(
+        (p) =>
+          p.category_name === cat ||
+          accessoriesCategories.find((c) => c.id === p.category_id)?.name === cat
+      )
+    }
+
+    // Availability filter
+    if (onlyAvailable) {
+      list = list.filter(
+        (p) => p.is_available && Number(p.stock) !== 0
+      )
+    }
+
+    // Search
+    const search = q.trim().toLowerCase()
+
+    if (search) {
+      list = list.filter((p) => {
+        const name = p.name ?? ''
+        const description = p.description ?? ''
+
+        return `${name} ${description}`
+          .toLowerCase()
+          .includes(search)
+      })
+    }
+
+    // Sorting
+    if (sort === 'price-low') {
+      list.sort(
+        (a, b) =>
+          Number(a.discount_price ?? a.price) -
+          Number(b.discount_price ?? b.price)
+      )
+    }
+
+    if (sort === 'price-high') {
+      list.sort(
+        (a, b) =>
+          Number(b.discount_price ?? b.price) -
+          Number(a.discount_price ?? a.price)
+      )
+    }
+
+    if (sort === 'featured') {
+      list.sort(
+        (a, b) =>
+          Number(b.is_featured || 0) -
+          Number(a.is_featured || 0)
+      )
+    }
+
+    return list
+  }, [
+    accessoriesProducts,
+    accessoriesCategories,
+    cat,
+    q,
+    sort,
+    onlyAvailable,
+  ])
+
+  return (
+    <div>
+      {/* Hero */}
+      <section
+        style={{
+          background: 'linear-gradient(135deg,#121212,#2A1E2E)',
+          borderBottom: '1px solid var(--line)',
+        }}
+      >
+        <div
+          className="container accessories-hero"
+          style={{
+            padding: '48px 0',
+            display: 'grid',
+            gridTemplateColumns: '1.2fr .8fr',
+            gap: 24,
+            alignItems: 'center',
+          }}
+        >
+          <div>
+            <span
+              className="badge"
+              style={{
+                background: '#fff',
+                color: '#111',
+                border: 'none',
+              }}
+            >
+              ✦ متجر Premium
+            </span>
+
+            <h1
+              style={{
+                fontSize: 'clamp(28px,4vw,44px)',
+                fontWeight: 900,
+                margin: '12px 0',
+              }}
+            >
+              {settings.accessories_name} — أناقة تفرق
+            </h1>
+
+            <p className="muted" style={{ maxWidth: 560 }}>
+              {settings.accessories_about}
+            </p>
+
+            <div
+              style={{
+                display: 'flex',
+                gap: 10,
+                marginTop: 18,
+                flexWrap: 'wrap',
+              }}
+            >
+              <a href="#catalog" className="btn btn-primary">
+                تسوق الآن
+              </a>
+
+              <button
+                className="btn btn-ghost"
+                onClick={() => setAccessoriesCartOpen(true)}
+              >
+                <ShoppingBag size={16} />
+                السلة ({accessoriesCount})
+              </button>
+            </div>
+          </div>
+
+          <ImageWithFallback
+            src={settings.accessories_image}
+            alt="Accessories"
+            style={{
+              width: '100%',
+              height: 260,
+              objectFit: 'cover',
+              borderRadius: 20,
+            }}
+          />
+        </div>
+      </section>
+
+      {/* Catalog */}
+      <section
+        className="container"
+        id="catalog"
+        style={{ padding: '32px 0' }}
+      >
+        <SectionHeading
+          eyebrow="الكتالوج"
+          title="اختار قطعتك"
+          subtitle="بحث، فلترة، ترتيب، ومخزون حقيقي."
+        />
+
+        {/* Search and filters */}
+        <div
+          className="card"
+          style={{
+            padding: 14,
+            display: 'flex',
+            gap: 10,
+            flexWrap: 'wrap',
+            marginBottom: 16,
+          }}
+        >
+          <div
+            style={{
+              flex: 1,
+              minWidth: 220,
+              display: 'flex',
+              gap: 8,
+              alignItems: 'center',
+              background: 'rgba(255,255,255,.05)',
+              border: '1px solid var(--line)',
+              borderRadius: 12,
+              padding: '0 12px',
+            }}
+          >
+            <Search size={18} className="muted" />
+
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="ابحث عن منتج..."
+              style={{
+                background: 'transparent',
+                border: 'none',
+                outline: 'none',
+                color: '#fff',
+                padding: '12px 0',
+                width: '100%',
+              }}
+            />
+          </div>
+
+          <select
+            value={sort}
+            onChange={(e) => setSort(e.target.value)}
+            className="input"
+            style={{ width: 170 }}
+          >
+            <option value="featured">المميزة أولاً</option>
+            <option value="price-low">السعر: من الأقل</option>
+            <option value="price-high">السعر: من الأعلى</option>
+          </select>
+
+          <label
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              fontSize: 13,
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={onlyAvailable}
+              onChange={(e) => setOnlyAvailable(e.target.checked)}
+            />
+            المتاح فقط
+          </label>
+        </div>
+
+        {/* Categories */}
+        <div
+          style={{
+            display: 'flex',
+            gap: 8,
+            flexWrap: 'wrap',
+            marginBottom: 18,
+          }}
+        >
+          {cats.map((c) => (
+            <button
+              key={c}
+              onClick={() => setCat(c)}
+              className="btn"
+              style={{
+                padding: '7px 14px',
+                fontSize: 13,
+                background: cat === c ? '#fff' : 'rgba(255,255,255,.06)',
+                color: cat === c ? '#111' : '#fff',
+              }}
+            >
+              {c}
+            </button>
+          ))}
+        </div>
+
+        {/* Products */}
+        {filtered.length === 0 ? (
+          <EmptyState title="لا توجد منتجات مطابقة" />
+        ) : (
+          <div className="grid-3">
+            {filtered.map((p) => (
+              <Reveal key={p.id}>
+                <ProductCard product={p} />
+              </Reveal>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <CartDrawer />
+    </div>
+  )
+}
